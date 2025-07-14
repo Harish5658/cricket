@@ -7,7 +7,7 @@ import os
 app = Flask(__name__)
 
 def scrape_matches():
-    url = 'https://crex.com/series/1K7/champions-trophy-2025'
+    url = os.environ.get("MATCH_URL", 'https://crex.com/series/1K7/champions-trophy-2025')
     response = requests.get(url)
     if response.status_code != 200:
         return {"error": "Failed to fetch main page"}
@@ -70,5 +70,4 @@ def live_matches_api():
 if __name__ == "__main__":
     # Ensure Flask binds to the correct IP and port for the cloud environment
     port = int(os.environ.get("PORT", 5000))  # Use environment port or default to 5000
-    app.run(host="0.0.0.0", port=port, debug=True)
-
+    app.run(host="0.0.0.0", port=port, debug=os.environ.get('FLASK_ENV') != 'production')
