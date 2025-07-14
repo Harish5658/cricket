@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 import requests
 import re
 from bs4 import BeautifulSoup
+import os
 
 app = Flask(__name__)
 
@@ -24,29 +25,20 @@ def scrape_matches():
             second_team = match.find("div", class_="team-wrapper right-team-name").text.split("/")[0]
             second_team = re.sub(r'\d+', '', second_team).strip()
 
-            # Extract winning team info (e.g. "IND Won")
-            winning_team_tag = match.find("div", class_="result")
-            winning_team = winning_team_tag.find_next('span').text.strip() if winning_team_tag else "N/A"
+            # Extract winning team info
+            winning_team = match.find("div", class_="result").find_next('span').text.strip()
 
             # Extract tournament or match reason
-            tournament_tag = match.find("span", class_="reason")
-            tournament = tournament_tag.text.strip() if tournament_tag else "N/A"
+            tournament = match.find("span", class_="reason").text.strip()
 
             # Match detail URL
             match_url = "https://crex.com" + match.find("a")["href"]
 
-            # Fetch match description/details from match URL (try to get specific info)
+            # Fetch match description/details from match URL
             response_detail = requests.get(match_url)
             if response_detail.status_code == 200:
                 soup_detail = BeautifulSoup(response_detail.content, 'lxml')
-
-                # Try to extract a summary, e.g., from the first <div class="result"> span or similar
-                result_div = soup_detail.find("div", class_="result")
-                if result_div:
-                    description_span = result_div.find('span')
-                    match_description = description_span.text.strip() if description_span else "No description available"
-                else:
-                    match_description = "No description available"
+                match_description = ' '.join(soup_detail.text.split())
             else:
                 match_description = "Details not available"
 
@@ -62,7 +54,7 @@ def scrape_matches():
             match_data.append(match_info)
 
         except Exception as e:
-            # Log error and continue without breaking API
+            # In case any part fails, skip that match to avoid breaking API
             print(f"Error processing a match: {e}")
             continue
 
@@ -76,5 +68,7 @@ def live_matches_api():
     return jsonify(data)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Ensure Flask binds to the correct IP and port for the cloud environment
+    port = int(os.environ.get("PORT", 5000))  # Use environment port or default to 5000
+    app.run(host="0.0.0.0", port=port, debug=True)
 
